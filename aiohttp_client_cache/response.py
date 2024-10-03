@@ -139,6 +139,7 @@ class CachedResponse(ClientResponse):
         self._headers = v
 
     async def read(self) -> bytes:
+        logger.warning("Reading")
         return await self.content.read()
 
     async def postprocess(self, expires: datetime | None = None) -> CachedResponse:

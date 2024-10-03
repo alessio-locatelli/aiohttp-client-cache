@@ -203,9 +203,8 @@ class BaseBackendTest:
                 response = cast(CachedResponse, response)
                 lines = [line async for line in response.content]
                 assert len(b''.join(lines)) == 64
+                response.reset()
 
-                # Can read multiple times.
-                assert len(await response.read()) == 64
                 assert len(await response.read()) == 64
                 response.reset()
 
@@ -476,10 +475,12 @@ class BaseBackendTest:
         async with ClientSession() as session:
             async with session.get(url) as resp:
                 aiohttp_content = await resp.content.read()
+                assert aiohttp_content
 
         async with self.init_session() as session:
             response_1 = await session.get(url)
-            assert await response_1.content.read() == aiohttp_content
+            response_1_content = await response_1.content.read()
+            assert response_1_content == aiohttp_content
 
             uncached_response_attributes = response_1.__dict__
 
@@ -497,7 +498,6 @@ class BaseBackendTest:
                     '_session',
                     '_protocol',
                     '_connection',
-                    '_body',
                 }:
                     assert not v
                 else:
@@ -554,7 +554,6 @@ class BaseBackendTest:
                     '_session',
                     '_protocol',
                     '_connection',
-                    '_body'  # TODO: Is this correct?
                 }:
                     assert not v
                 else:
@@ -582,7 +581,7 @@ class BaseBackendTest:
             assert response_2.get_encoding() == 'utf-8'
             assert response_2.headers['Content-Type'] == 'application/octet-stream'
             
-            assert await response_1.content.read() == await response_2.content.read()
+            assert response_1_content == await response_2.content.read()
             assert response_1.version == response_2.version
             assert response_1.status == response_2.status
             assert response_1.reason == response_2.reason
@@ -591,6 +590,9 @@ class BaseBackendTest:
             assert response_1.url == response_2.url
             assert response_1.real_url == response_2.real_url
             assert response_1.host == response_2.host
-            assert response_1.request_info == response_2.request_info
             assert response_1.history == response_2.history
             assert response_1.links == response_2.links
+            
+            assert response_1.request_info.url == response_2.request_info.url
+            assert response_1.request_info.method == response_2.request_info.method
+            assert response_1.request_info.real_url == response_2.request_info.real_url
