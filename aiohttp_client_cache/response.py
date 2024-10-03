@@ -50,7 +50,6 @@ class CachedResponse(ClientResponse):
         status: int,
         history: tuple[ClientResponse, ...],
         body: Any,
-        content: StreamReader,
         closed,
         protocol,
         connection,
@@ -80,7 +79,6 @@ class CachedResponse(ClientResponse):
         self.status = status
         self._history = history
         self._body = body
-        self.content = content
         self._closed = closed
         self._protocol = protocol
         self._connection = connection
@@ -140,6 +138,9 @@ class CachedResponse(ClientResponse):
     def headers(self, v) -> None:
         self._headers = v
 
+    async def read(self) -> bytes:
+        return await self.content.read()
+
     async def postprocess(self, expires: datetime | None = None) -> CachedResponse:
         """Read response content, and reset StreamReader on original response.
 
@@ -177,7 +178,6 @@ class CachedResponse(ClientResponse):
                         reason=r.reason,
                         headers=r._headers,
                         raw_headers=r._raw_headers,
-                        content=r.content,
                         cookies=r.cookies,
                         history=r._history,
                         body=r._body,

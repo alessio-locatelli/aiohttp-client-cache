@@ -192,6 +192,7 @@ class CacheBackend:
             cache_key: Cache key to use for the response; will be generated if not provided
             expires: Expiration time to set for the response
         """
+        await response.read()
         r = CachedResponse(
             response.method,
             response.url,
@@ -211,12 +212,12 @@ class CacheBackend:
             reason=response.reason,
             headers=response._headers,
             raw_headers=response._raw_headers,
-            content=response.content,
             cookies=response.cookies,
             history=response._history,
-            body=deepcopy(response._body),
+            body=response._body,
             released=response._released,
         )
+        response.content = CachedStreamReader(response._body)
         cache_key = cache_key or self.create_key(r.method, r.url)
         await self.responses.write(cache_key, await r.postprocess(expires))
 

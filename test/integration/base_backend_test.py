@@ -591,6 +591,6 @@ class BaseBackendTest:
             assert response_1.url == response_2.url
             assert response_1.real_url == response_2.real_url
             assert response_1.host == response_2.host
-            #assert response_1.request_info == response_2.request_info
+            assert response_1.request_info == response_2.request_info
             assert response_1.history == response_2.history
             assert response_1.links == response_2.links
