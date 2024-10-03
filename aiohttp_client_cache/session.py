@@ -128,12 +128,27 @@ class CacheMixin(MIXIN_BASE):
                             traces=new_response._traces,
                             loop=new_response._loop,
                             session=new_response._session,
+                            # Attributes that `aiohttp` assigns when it calls `start()` under the hood.                            
+                            closed=new_response._closed,
+                            protocol=new_response._protocol,
+                            connection=new_response._connection,
+                            version=new_response.version,
+                            status=new_response.status,
+                            reason=new_response.reason,
                             headers=new_response._headers,
+                            raw_headers=new_response._raw_headers,
+                            content=new_response.content,
+                            cookies=new_response.cookies,
+                            history=new_response._history,
+                            body=new_response._body,
                         ),
                         actions.key,
                         actions.expires,
                     )
+
+                # Make `ClientResponse` and `CachedResponse` behave more consistently for the end user.
                 new_response.from_cache = False
+
                 return new_response
 
     async def _refresh_cached_response(

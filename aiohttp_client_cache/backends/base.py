@@ -159,8 +159,7 @@ class CacheBackend:
             if response is not None:
                 assert response.method  # type: ignore
         except (AssertionError, AttributeError, KeyError, TypeError, pickle.PickleError) as e:
-            logger.debug(repr(e))
-            response = None
+            raise
         if not response:
             logger.debug('No cached response found')
         # If the item is expired or filtered out, delete it from the cache

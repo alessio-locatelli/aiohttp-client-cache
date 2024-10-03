@@ -7,10 +7,12 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union, cast
 from unittest.mock import Mock
 
 from aiohttp import ClientResponse, ClientSession
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import RequestInfo
 from aiohttp.helpers import BaseTimerContext
 from aiohttp.streams import StreamReader
 from aiohttp.tracing import Trace
+from aiohttp.typedefs import RawHeaders
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
@@ -42,8 +44,19 @@ class CachedResponse(ClientResponse):
         traces: list[Trace],
         loop: asyncio.AbstractEventLoop,
         session: ClientSession,
-        # Attributes that `aiohttp` assigns when it calls `read()` under the hood.
+        # Attributes that `aiohttp` assigns when it calls `start()` under the hood.
         headers: CIMultiDictProxy,
+        raw_headers: RawHeaders,
+        status: int,
+        protocol: ResponseHandler | None,
+        history: tuple[ClientResponse, ...],
+        body: Any,
+        content: StreamReader,
+        closed,
+        connection,
+        version,
+        reason,
+        cookies,
     ) -> None:
         self._content: StreamReader | None = None
         self.created_at: datetime = utcnow()
@@ -51,6 +64,17 @@ class CachedResponse(ClientResponse):
         self.last_used: datetime = utcnow()
         self.from_cache = True
         self._headers = headers
+        self._raw_headers = raw_headers
+        self.status = status
+        self._protocol = protocol
+        self._history = history
+        self._body = body
+        self.content = content
+        self._closed = closed
+        self._connection = connection
+        self.version = version
+        self.reason = reason
+        self.cookies = cookies
         super().__init__(
             method,
             url,
@@ -72,10 +96,13 @@ class CachedResponse(ClientResponse):
             '_loop',
             '_timer',
             '_resolve_charset',
-            #'_protocol',  # TODO: Remove?
+            '_protocol',
             '_content',
+            '_session'
         ):
             del state[k]
+        #for k, v in state.items():  # TODO: Remove.
+        #    logger.warning(f"{k=}, {type(v)}, {v=}")            
         return state
 
     def __setstate__(self, state):
@@ -128,8 +155,8 @@ class CachedResponse(ClientResponse):
 
         self.expires = expires
 
-        if self.history:
-            self._history = (*[await cast(CachedResponse, r).postprocess() for r in self.history],)
+        if self._history:
+            self._history = (*[await cast(CachedResponse, r).postprocess() for r in self._history],)
 
         # We must call `get_encoding` before pickling because pickling `_resolve_charset` raises
         # _pickle.PicklingError: Can't pickle <function ClientSession.<lambda> at 0x7f94fdd13c40>:

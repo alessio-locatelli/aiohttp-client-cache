@@ -148,7 +148,6 @@ class BaseBackendTest:
             # After 1 second, the response should be expired, and a new one should be fetched
             await asyncio.sleep(1)
             response = cast(CachedResponse, await session.get(httpbin('get'), expire_after=1))
-            print(response.expires)
             assert response.from_cache is False
 
     async def test_delete_expired_responses(self):
@@ -195,16 +194,21 @@ class BaseBackendTest:
     async def test_streaming_requests(self):
         """Test that streaming requests work both for the original and cached responses"""
         async with self.init_session() as session:
-            for _ in range(2):
-                response = cast(CachedResponse, await session.get(httpbin('stream-bytes/64')))
+            for i in range(2):                
+                response = await session.get(httpbin('stream-bytes/64'))
+                if i == 0:
+                    # Do not check `aiohttp.ClentResponse`.
+                    continue
+                
+                response = cast(CachedResponse, response)
                 lines = [line async for line in response.content]
                 assert len(b''.join(lines)) == 64
-
+                
                 # Can read multiple times.
                 assert len(await response.read()) == 64
                 assert len(await response.read()) == 64
-
                 response.reset()
+
                 chunks = [c async for (c, _) in response.content.iter_chunks()]
                 assert len(b''.join(chunks)) == 64
                 chunks = [c async for (c, _) in response.content.iter_chunks()]
