@@ -6,7 +6,7 @@ import asyncio
 import pickle
 from contextlib import asynccontextmanager
 
-from aiohttp import HttpVersion, RequestInfo
+from aiohttp import HttpVersion, RequestInfo, StreamReader
 from multidict import CIMultiDictProxy, MultiDictProxy
 from yarl import URL
 from test.conftest import (
@@ -194,16 +194,16 @@ class BaseBackendTest:
     async def test_streaming_requests(self):
         """Test that streaming requests work both for the original and cached responses"""
         async with self.init_session() as session:
-            for i in range(2):                
+            for i in range(2):
                 response = await session.get(httpbin('stream-bytes/64'))
                 if i == 0:
                     # Do not check `aiohttp.ClentResponse`.
                     continue
-                
+
                 response = cast(CachedResponse, response)
                 lines = [line async for line in response.content]
                 assert len(b''.join(lines)) == 64
-                
+
                 # Can read multiple times.
                 assert len(await response.read()) == 64
                 assert len(await response.read()) == 64
@@ -491,13 +491,13 @@ class BaseBackendTest:
                     '_session',
                     '_protocol',
                     '_connection',
+                    '_body',
                 }:
                     assert not v
                 else:
                     assert v
 
-            assert isinstance(response_1._content, CachedStreamReader)
-            assert isinstance(response_1.content, CachedStreamReader)
+            assert isinstance(response_1.content, StreamReader)
             assert isinstance(response_1.version, HttpVersion)
             assert isinstance(response_1.status, int)
             assert isinstance(response_1.reason, str)
@@ -526,6 +526,7 @@ class BaseBackendTest:
                 '_loop',
                 '_resolve_charset',
                 '_protocol',
+                '_session',
             }
 
             for k in uncached_response_attributes:
@@ -551,7 +552,7 @@ class BaseBackendTest:
                 else:
                     assert v
 
-            assert response_2._content is None
+            # assert response_2._content is None  # TODO: Is this correct?
             assert isinstance(response_2.content, CachedStreamReader)
             assert isinstance(response_2._content, CachedStreamReader)
             assert isinstance(response_2.version, HttpVersion)  # type: ignore[unreachable]

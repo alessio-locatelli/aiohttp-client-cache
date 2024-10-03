@@ -8,7 +8,7 @@ from asyncio import Lock
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from logging import getLogger
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from aiohttp import ClientSession
 from aiohttp.typedefs import StrOrURL
@@ -99,6 +99,11 @@ class CacheMixin(MIXIN_BASE):
                     method, str_or_url, response, actions, **kwargs
                 )
                 if not from_cache:
+                    # Make `ClientResponse` and `CachedResponse` behave more consistently for the end user.
+                    new_response.expires = (
+                        None  # TODO: It is meaningless on a `ClientResponse`. Remove?
+                    )
+                    new_response.from_cache = False
                     return new_response
                 else:
                     restore_cookies(new_response)
@@ -117,36 +122,12 @@ class CacheMixin(MIXIN_BASE):
                 new_response = await super()._request(method, str_or_url, **kwargs)
                 actions.update_from_response(new_response)
                 if await self.cache.is_cacheable(new_response, actions):
-                    await self.cache.save_response(
-                        CachedResponse(
-                            new_response.method,
-                            new_response.url,
-                            writer=new_response._writer,
-                            continue100=new_response._continue,
-                            timer=new_response._timer,
-                            request_info=new_response._request_info,
-                            traces=new_response._traces,
-                            loop=new_response._loop,
-                            session=new_response._session,
-                            # Attributes that `aiohttp` assigns when it calls `start()` under the hood.                            
-                            closed=new_response._closed,
-                            protocol=new_response._protocol,
-                            connection=new_response._connection,
-                            version=new_response.version,
-                            status=new_response.status,
-                            reason=new_response.reason,
-                            headers=new_response._headers,
-                            raw_headers=new_response._raw_headers,
-                            content=new_response.content,
-                            cookies=new_response.cookies,
-                            history=new_response._history,
-                            body=new_response._body,
-                        ),
-                        actions.key,
-                        actions.expires,
-                    )
+                    await self.cache.save_response(new_response, actions.key, actions.expires)
 
                 # Make `ClientResponse` and `CachedResponse` behave more consistently for the end user.
+                new_response.expires = (
+                    None  # TODO: It is meaningless on a `ClientResponse`. Remove?
+                )
                 new_response.from_cache = False
 
                 return new_response
@@ -158,7 +139,7 @@ class CacheMixin(MIXIN_BASE):
         cached_response: CachedResponse,
         actions: CacheActions,
         **kwargs,
-    ) -> tuple[bool, CachedResponse]:
+    ) -> tuple[bool, AnyResponse]:
         """Checks if the cached response is still valid using conditional requests if supported"""
 
         # check whether we can do a conditional request,
@@ -170,9 +151,7 @@ class CacheMixin(MIXIN_BASE):
         if conditional_request_supported:
             logger.debug(f'Refreshing cached response; making request to {str_or_url}')
             kwargs['headers'] = refresh_headers
-            refreshed_response = cast(
-                CachedResponse, await super()._request(method, str_or_url, **kwargs)
-            )
+            refreshed_response = await super()._request(method, str_or_url, **kwargs)
 
             if refreshed_response.status == 304:
                 logger.debug('Cached response not modified; returning cached response')

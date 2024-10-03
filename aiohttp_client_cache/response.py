@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from logging import getLogger
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from unittest.mock import Mock
 
 from aiohttp import ClientResponse, ClientSession
@@ -57,7 +57,19 @@ class CachedResponse(ClientResponse):
         version,
         reason,
         cookies,
+        released: bool,
     ) -> None:
+        super().__init__(
+            method,
+            url,
+            writer=writer,
+            continue100=continue100,
+            timer=timer,
+            request_info=request_info,
+            traces=traces,
+            loop=loop,
+            session=session,
+        )
         self._content: StreamReader | None = None
         self.created_at: datetime = utcnow()
         self.expires: datetime | None = None
@@ -75,17 +87,7 @@ class CachedResponse(ClientResponse):
         self.version = version
         self.reason = reason
         self.cookies = cookies
-        super().__init__(
-            method,
-            url,
-            writer=writer,
-            continue100=continue100,
-            timer=timer,
-            request_info=request_info,
-            traces=traces,
-            loop=loop,
-            session=session,
-        )
+        self._released = released
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -98,11 +100,11 @@ class CachedResponse(ClientResponse):
             '_resolve_charset',
             '_protocol',
             '_content',
-            '_session'
+            '_session',
         ):
             del state[k]
-        #for k, v in state.items():  # TODO: Remove.
-        #    logger.warning(f"{k=}, {type(v)}, {v=}")            
+        # for k, v in state.items():  # TODO: Remove.
+        #    logger.warning(f"{k=}, {type(v)}, {v=}")
         return state
 
     def __setstate__(self, state):
@@ -156,7 +158,36 @@ class CachedResponse(ClientResponse):
         self.expires = expires
 
         if self._history:
-            self._history = (*[await cast(CachedResponse, r).postprocess() for r in self._history],)
+            self._history = (
+                *[
+                    await CachedResponse(
+                        r.method,
+                        r.url,
+                        writer=r._writer,
+                        continue100=r._continue,
+                        timer=r._timer,
+                        request_info=r._request_info,
+                        traces=r._traces,
+                        loop=r._loop,
+                        session=r._session,
+                        # Attributes that `aiohttp` assigns when it calls `start()` under the hood.
+                        closed=r._closed,
+                        protocol=r._protocol,
+                        connection=r._connection,
+                        version=r.version,
+                        status=r.status,
+                        reason=r.reason,
+                        headers=r._headers,
+                        raw_headers=r._raw_headers,
+                        content=r.content,
+                        cookies=r.cookies,
+                        history=r._history,
+                        body=r._body,
+                        released=r._released,
+                    ).postprocess()
+                    for r in self._history
+                ],
+            )
 
         # We must call `get_encoding` before pickling because pickling `_resolve_charset` raises
         # _pickle.PicklingError: Can't pickle <function ClientSession.<lambda> at 0x7f94fdd13c40>:

@@ -9,6 +9,7 @@ from datetime import datetime
 from logging import getLogger
 from typing import Any, AsyncIterable, Awaitable, Callable, Iterable, Union
 
+from aiohttp import ClientResponse
 from aiohttp.typedefs import StrOrURL
 
 from aiohttp_client_cache.cache_control import CacheActions, ExpirationPatterns, ExpirationTime
@@ -158,7 +159,7 @@ class CacheBackend:
             # Catch "quiet" deserialization errors due to upgrading attrs  # TODO: Remove?
             if response is not None:
                 assert response.method  # type: ignore
-        except (AssertionError, AttributeError, KeyError, TypeError, pickle.PickleError) as e:
+        except (AssertionError, AttributeError, KeyError, TypeError, pickle.PickleError):
             raise
         if not response:
             logger.debug('No cached response found')
@@ -180,7 +181,7 @@ class CacheBackend:
 
     async def save_response(
         self,
-        response: CachedResponse,
+        response: ClientResponse,
         cache_key: str | None = None,
         expires: datetime | None = None,
     ):
@@ -191,9 +192,33 @@ class CacheBackend:
             cache_key: Cache key to use for the response; will be generated if not provided
             expires: Expiration time to set for the response
         """
-        cache_key = cache_key or self.create_key(response.method, response.url)
-        cached_response = await response.postprocess(expires)
-        await self.responses.write(cache_key, cached_response)
+        r = CachedResponse(
+            response.method,
+            response.url,
+            writer=response._writer,
+            continue100=response._continue,
+            timer=response._timer,
+            request_info=response._request_info,
+            traces=response._traces,
+            loop=response._loop,
+            session=response._session,
+            # Attributes that `aiohttp` assigns when it calls `start()` under the hood.
+            closed=response._closed,
+            protocol=response._protocol,
+            connection=response._connection,
+            version=response.version,
+            status=response.status,
+            reason=response.reason,
+            headers=response._headers,
+            raw_headers=response._raw_headers,
+            content=response.content,
+            cookies=response.cookies,
+            history=response._history,
+            body=response._body,
+            released=response._released,
+        )
+        cache_key = cache_key or self.create_key(r.method, r.url)
+        await self.responses.write(cache_key, await r.postprocess(expires))
 
         # Alias any redirect requests to the same cache key
         for r in response.history:
