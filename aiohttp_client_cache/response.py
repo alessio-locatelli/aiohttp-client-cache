@@ -42,12 +42,15 @@ class CachedResponse(ClientResponse):
         traces: list[Trace],
         loop: asyncio.AbstractEventLoop,
         session: ClientSession,
+        # Attributes that `aiohttp` assigns when it calls `read()` under the hood.
+        headers: CIMultiDictProxy,
     ) -> None:
         self._content: StreamReader | None = None
         self.created_at: datetime = utcnow()
         self.expires: datetime | None = None
         self.last_used: datetime = utcnow()
-        self.from_cache = False
+        self.from_cache = True
+        self._headers = headers
         super().__init__(
             method,
             url,
@@ -69,7 +72,7 @@ class CachedResponse(ClientResponse):
             '_loop',
             '_timer',
             '_resolve_charset',
-            '_protocol',
+            #'_protocol',  # TODO: Remove?
             '_content',
         ):
             del state[k]
@@ -78,7 +81,6 @@ class CachedResponse(ClientResponse):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._cache = {}
-        self.from_cache = True
         self._content = None
 
         def decode_header(header):
@@ -172,6 +174,9 @@ class CachedStreamReader(StreamReader):
         super().__init__(protocol, limit=len(body), loop=None)
         self.feed_data(body)
         self.feed_eof()
+
+
+AnyResponse = Union[ClientResponse, CachedResponse]
 
 
 def _to_str_tuples(data: Mapping) -> DictItems:

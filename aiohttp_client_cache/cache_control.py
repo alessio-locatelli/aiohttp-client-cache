@@ -15,8 +15,9 @@ from aiohttp.typedefs import StrOrURL
 from attr import define, field
 from multidict import CIMultiDict
 
+
 if TYPE_CHECKING:
-    from aiohttp_client_cache.response import CachedResponse
+    from aiohttp_client_cache.response import AnyResponse
 
 # Value that may be set by either Cache-Control headers or CacheBackend params to disable caching
 DO_NOT_CACHE = 0
@@ -131,7 +132,7 @@ class CacheActions:
         """Convert the user/header-provided expiration value to a datetime"""
         return get_expiration_datetime(self.expire_after)
 
-    def update_from_response(self, response: CachedResponse):
+    def update_from_response(self, response: AnyResponse):
         """Update expiration + actions based on response headers, if not previously set by request"""
         if not self.cache_control:
             return

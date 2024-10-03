@@ -13,12 +13,12 @@ from aiohttp.typedefs import StrOrURL
 
 from aiohttp_client_cache.cache_control import CacheActions, ExpirationPatterns, ExpirationTime
 from aiohttp_client_cache.cache_keys import create_key
-from aiohttp_client_cache.response import CachedResponse
+from aiohttp_client_cache.response import AnyResponse, CachedResponse
 
 ResponseOrKey = Union[CachedResponse, bytes, str, None]
 _FilterFn = Union[
-    Callable[[CachedResponse], bool],
-    Callable[[CachedResponse], Awaitable[bool]],
+    Callable[[AnyResponse], bool],
+    Callable[[AnyResponse], Awaitable[bool]],
 ]
 
 logger = getLogger(__name__)
@@ -84,7 +84,7 @@ class CacheBackend:
         self.ignored_params = set(ignored_params or [])
 
     async def is_cacheable(
-        self, response: CachedResponse | None, actions: CacheActions | None = None
+        self, response: AnyResponse | None, actions: CacheActions | None = None
     ) -> bool:
         """Perform all checks needed to determine if the given response should be cached"""
         if not response:
@@ -307,10 +307,7 @@ class BaseCache(metaclass=ABCMeta):
         """Deserialize a cached URL or response"""
         if not item:
             return None
-        if isinstance(item, CachedResponse):
-            item.from_cache = True
-            return item
-        if isinstance(item, str):
+        if isinstance(item, CachedResponse) or isinstance(item, str):
             return item
         return self._serializer.loads(item)
 
@@ -414,8 +411,7 @@ class DictCache(BaseCache, UserDict):
             item.reset()
         except AttributeError:
             pass
-        else:
-            item.from_cache = True
+
         return item
 
     async def size(self) -> int:

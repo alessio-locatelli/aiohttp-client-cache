@@ -15,7 +15,7 @@ from aiohttp.typedefs import StrOrURL
 
 from aiohttp_client_cache.backends import CacheBackend, get_valid_kwargs
 from aiohttp_client_cache.cache_control import CacheActions, ExpirationTime, compose_refresh_headers
-from aiohttp_client_cache.response import CachedResponse
+from aiohttp_client_cache.response import AnyResponse, CachedResponse
 from aiohttp_client_cache.signatures import extend_signature
 
 if TYPE_CHECKING:
@@ -63,7 +63,6 @@ class CacheMixin(MIXIN_BASE):
 
         # Pass along any valid kwargs for ClientSession (or custom session superclass)
         session_kwargs = get_valid_kwargs(super().__init__, {**kwargs, 'base_url': base_url})
-        session_kwargs['response_class'] = CachedResponse
         super().__init__(**session_kwargs)
 
     @extend_signature(ClientSession._request)
@@ -74,7 +73,7 @@ class CacheMixin(MIXIN_BASE):
         expire_after: ExpirationTime = None,
         refresh: bool = False,
         **kwargs,
-    ) -> CachedResponse:
+    ) -> AnyResponse:
         """Wrapper around :py:meth:`.SessionClient._request` that adds caching"""
         # Attempt to fetch cached response
         key = self.cache.create_key(method, str_or_url, **kwargs)
@@ -115,12 +114,26 @@ class CacheMixin(MIXIN_BASE):
                     logger.debug(f'Reading from cache was skipped; making request to {str_or_url}')
                 else:
                     logger.debug(f'Cached response not found; making request to {str_or_url}')
-                new_response = cast(
-                    CachedResponse, await super()._request(method, str_or_url, **kwargs)
-                )
+                new_response = await super()._request(method, str_or_url, **kwargs)
                 actions.update_from_response(new_response)
                 if await self.cache.is_cacheable(new_response, actions):
-                    await self.cache.save_response(new_response, actions.key, actions.expires)
+                    await self.cache.save_response(
+                        CachedResponse(
+                            new_response.method,
+                            new_response.url,
+                            writer=new_response._writer,
+                            continue100=new_response._continue,
+                            timer=new_response._timer,
+                            request_info=new_response._request_info,
+                            traces=new_response._traces,
+                            loop=new_response._loop,
+                            session=new_response._session,
+                            headers=new_response._headers,
+                        ),
+                        actions.key,
+                        actions.expires,
+                    )
+                new_response.from_cache = False
                 return new_response
 
     async def _refresh_cached_response(

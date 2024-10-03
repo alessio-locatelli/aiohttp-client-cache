@@ -304,6 +304,7 @@ class BaseBackendTest:
 
             assert response.from_cache is False
             assert await session.cache.responses.size() == 0
+            assert response.get_encoding() == 'utf-8'
 
     async def test_cookies_with_redirect(self):
         async with self.init_session(cache_control=True) as session:
