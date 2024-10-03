@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy, deepcopy
 import inspect
 import pickle
 from abc import ABCMeta, abstractmethod
@@ -14,7 +14,7 @@ from aiohttp.typedefs import StrOrURL
 
 from aiohttp_client_cache.cache_control import CacheActions, ExpirationPatterns, ExpirationTime
 from aiohttp_client_cache.cache_keys import create_key
-from aiohttp_client_cache.response import AnyResponse, CachedResponse
+from aiohttp_client_cache.response import AnyResponse, CachedResponse, CachedStreamReader
 
 ResponseOrKey = Union[CachedResponse, bytes, str, None]
 _FilterFn = Union[
@@ -214,7 +214,7 @@ class CacheBackend:
             content=response.content,
             cookies=response.cookies,
             history=response._history,
-            body=response._body,
+            body=deepcopy(response._body),
             released=response._released,
         )
         cache_key = cache_key or self.create_key(r.method, r.url)

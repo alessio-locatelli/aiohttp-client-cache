@@ -48,11 +48,11 @@ class CachedResponse(ClientResponse):
         headers: CIMultiDictProxy,
         raw_headers: RawHeaders,
         status: int,
-        protocol: ResponseHandler | None,
         history: tuple[ClientResponse, ...],
         body: Any,
         content: StreamReader,
         closed,
+        protocol,
         connection,
         version,
         reason,
@@ -78,11 +78,11 @@ class CachedResponse(ClientResponse):
         self._headers = headers
         self._raw_headers = raw_headers
         self.status = status
-        self._protocol = protocol
         self._history = history
         self._body = body
         self.content = content
         self._closed = closed
+        self._protocol = protocol
         self._connection = connection
         self.version = version
         self.reason = reason
@@ -103,8 +103,6 @@ class CachedResponse(ClientResponse):
             '_session',
         ):
             del state[k]
-        # for k, v in state.items():  # TODO: Remove.
-        #    logger.warning(f"{k=}, {type(v)}, {v=}")
         return state
 
     def __setstate__(self, state):

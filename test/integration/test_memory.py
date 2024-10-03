@@ -17,6 +17,7 @@ class TestMemoryBackend(BaseBackendTest):
         async with self.init_session() as session:
             original_response = await session.get(url)
             original_content = await original_response.read()
+            assert original_content
 
             cached_response_1 = await session.get(url)
             content_1 = await cached_response_1.read()

@@ -100,10 +100,9 @@ class CacheMixin(MIXIN_BASE):
                 )
                 if not from_cache:
                     # Make `ClientResponse` and `CachedResponse` behave more consistently for the end user.
-                    new_response.expires = (
-                        None  # TODO: It is meaningless on a `ClientResponse`. Remove?
-                    )
                     new_response.from_cache = False
+                    # TODO: It is meaningless on a `ClientResponse`. Remove?
+                    new_response.expires = None
                     return new_response
                 else:
                     restore_cookies(new_response)
@@ -125,10 +124,9 @@ class CacheMixin(MIXIN_BASE):
                     await self.cache.save_response(new_response, actions.key, actions.expires)
 
                 # Make `ClientResponse` and `CachedResponse` behave more consistently for the end user.
-                new_response.expires = (
-                    None  # TODO: It is meaningless on a `ClientResponse`. Remove?
-                )
                 new_response.from_cache = False
+                # TODO: `expires` is meaningless on a `ClientResponse`. Remove?
+                new_response.expires = None
 
                 return new_response
 
