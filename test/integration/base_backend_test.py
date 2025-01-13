@@ -142,13 +142,19 @@ class BaseBackendTest:
             for response_format in HTTPBIN_FORMATS:
                 await session.get(httpbin(response_format))
             await session.get(httpbin('redirect/1'))
+            assert await session.cache.redirects.size() == 1
             await asyncio.sleep(1)
+            # NOTE: Call `delete_expired_responses` explicitly
+            # only for backends that have no built-in TTL.
+            await session.cache.delete_expired_responses()
+            assert await session.cache.redirects.size() == 0
 
             # Cache a response and some redirects, which should be the only non-expired cache items
             session.cache.expire_after = -1
             await session.get(httpbin('get'))
+            assert await session.cache.redirects.size() == 0
             await session.get(httpbin('redirect/3'))
-            assert await session.cache.redirects.size() == 4
+            assert await session.cache.redirects.size() == 3
             await session.cache.delete_expired_responses()
 
             assert await session.cache.responses.size() == 2
