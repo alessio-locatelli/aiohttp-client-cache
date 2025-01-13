@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import functools
 import warnings
 import asyncio
@@ -222,7 +223,9 @@ class SQLiteCache(BaseCache):
                 async for row in cursor:
                     yield row[0]
 
-    async def write(self, key: str, item: ResponseOrKey | sqlite3.Binary):
+    async def write(
+        self, key: str, item: ResponseOrKey | sqlite3.Binary, expire_after: datetime | None
+    ):
         async with self.get_connection(commit=True) as db:
             await db.execute(
                 f'INSERT OR REPLACE INTO `{self.table_name}` (key,value) VALUES (?,?)',
@@ -242,8 +245,8 @@ class SQLitePickleCache(SQLiteCache):
                 async for row in cursor:
                     yield self.deserialize(row[0])
 
-    async def write(self, key, item):
-        await super().write(key, sqlite3.Binary(self.serialize(item)))  # type: ignore[arg-type]
+    async def write(self, key, item, expire_after: datetime | None):
+        await super().write(key, sqlite3.Binary(self.serialize(item)), expire_after)  # type: ignore[arg-type]
 
 
 def sqlite_template(

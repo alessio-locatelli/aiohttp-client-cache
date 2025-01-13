@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from collections.abc import AsyncIterable
 
@@ -95,7 +96,7 @@ class MongoDBCache(BaseCache):
         ):
             yield doc['data']
 
-    async def write(self, key: str, item: ResponseOrKey):
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
         update = {'$set': {'data': item}}
         await self.collection.update_one({'_id': key}, update, upsert=True)
 
@@ -106,8 +107,8 @@ class MongoDBPickleCache(MongoDBCache):
     async def read(self, key):
         return self.deserialize(await super().read(key))
 
-    async def write(self, key, item):
-        await super().write(key, self.serialize(item))
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
+        await super().write(key, self.serialize(item), expire_after)
 
     async def values(self) -> AsyncIterable[ResponseOrKey]:
         async for doc in self.collection.find({'data': {'$exists': True}}):

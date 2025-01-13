@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 from logging import getLogger
 from typing import Any
 from collections.abc import AsyncIterable
@@ -166,7 +167,7 @@ class DynamoDbCache(BaseCache):
             return self.deserialize(item[self.val_attr_name].value)
         return None
 
-    async def write(self, key: str, item: ResponseOrKey) -> None:
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None) -> None:
         item = self.serialize(item)
         if len(item or b'') > MAX_ITEM_SIZE:
             logger.warning(

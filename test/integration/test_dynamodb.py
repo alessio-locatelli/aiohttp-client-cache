@@ -49,7 +49,7 @@ class TestDynamoDbCache(BaseStorageTest):
         """If an item exceeds DynamoDB's max item size, expect it to not be written to the cache"""
         data = urandom(MAX_ITEM_SIZE + 1)
         async with self.init_cache(self.storage_class) as cache:
-            await cache.write('key', data)
+            await cache.write('key', data, None)
             assert await cache.contains('key') is False
 
 

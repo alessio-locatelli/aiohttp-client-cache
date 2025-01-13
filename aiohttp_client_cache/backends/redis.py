@@ -108,7 +108,7 @@ class RedisCache(BaseCache):
         for v in await connection.hvals(self.hash_key):
             yield self.deserialize(v)
 
-    async def write(self, key: str, item: ResponseOrKey):
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
         connection = await self.get_connection()
         inserted_key_count = await connection.hset(
             self.hash_key,

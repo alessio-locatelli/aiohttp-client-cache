@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime
 from os import listdir, makedirs
 from os.path import abspath, expanduser, isabs, isfile, join
 from pathlib import Path
@@ -91,7 +92,7 @@ class FileCache(BaseCache):
         with self._try_io():
             await aiofiles.os.remove(self._join(key))
 
-    async def write(self, key: str, value: ResponseOrKey):
+    async def write(self, key: str, value: ResponseOrKey, expire_after: datetime | None):
         with self._try_io(ignore_errors=False):
             async with aiofiles.open(self._join(key), 'wb') as f:
                 await f.write(self.serialize(value) or b'')

@@ -324,7 +324,7 @@ class BaseBackendTest:
             assert isinstance(session.cache.responses._serializer, Serializer)
 
             # Simple serialize/deserialize round trip
-            await session.cache.responses.write('key', 'value')
+            await session.cache.responses.write('key', 'value', None)
             assert (await session.cache.responses.read('key')) == 'value'
 
             # Without the same signing key, the item shouldn't be considered safe to deserialize

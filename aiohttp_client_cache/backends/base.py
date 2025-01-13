@@ -195,11 +195,13 @@ class CacheBackend:
         """
         cache_key = cache_key or self.create_key(response.method, response.url)
         cached_response = await CachedResponse.from_client_response(response, expires)
-        await self.responses.write(cache_key, cached_response)
+        await self.responses.write(cache_key, cached_response, cached_response.expires)
 
         # Alias any redirect requests to the same cache key
         for r in response.history:
-            await self.redirects.write(self.create_key(r.method, r.url), cache_key)
+            await self.redirects.write(
+                self.create_key(r.method, r.url), cache_key, cached_response.expires
+            )
 
     async def clear(self):
         """Clear cache"""
@@ -361,7 +363,7 @@ class BaseCache(metaclass=ABCMeta):
         """Get all values stored in the cache"""
 
     @abstractmethod
-    async def write(self, key: str, item: ResponseOrKey):
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
         """Write an item to the cache"""
 
     async def pop(self, key: str, default=None) -> ResponseOrKey:
@@ -420,5 +422,5 @@ class DictCache(BaseCache, UserDict):
         for value in self.data.values():
             yield value
 
-    async def write(self, key: str, item: ResponseOrKey):
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
         self.data[key] = item

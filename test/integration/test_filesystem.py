@@ -35,7 +35,7 @@ class TestFileCache(BaseStorageTest):
     async def test_paths(self):
         async with self.init_cache() as cache:
             for i in range(10):
-                await cache.write(f'key_{i}', f'value_{i}')
+                await cache.write(f'key_{i}', f'value_{i}', None)
 
             assert len([p async for p in cache.paths()]) == 10
             async for path in cache.paths():

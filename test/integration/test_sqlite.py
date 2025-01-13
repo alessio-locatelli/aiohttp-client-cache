@@ -44,7 +44,7 @@ class TestSQLiteCache(BaseStorageTest):
             n_items = 1000
             async with cache.bulk_commit():
                 for i in range(n_items):
-                    await cache.write(f'key_{i}', f'value_{i}')
+                    await cache.write(f'key_{i}', f'value_{i}', None)
 
             keys = {k async for k in cache.keys()}
             values = {v async for v in cache.values()}
@@ -66,7 +66,7 @@ class TestSQLiteCache(BaseStorageTest):
                 async def bulk_commit_items(n_items):
                     async with cache.bulk_commit():
                         for i in range(n_items):
-                            await cache.write(f'key_{n_items}_{i}', f'value_{i}')
+                            await cache.write(f'key_{n_items}_{i}', f'value_{i}', None)
 
                 yield bulk_commit_items
 
@@ -82,8 +82,8 @@ class TestSQLiteCache(BaseStorageTest):
             self.init_cache(self.storage_class, index=2, fast_save=True) as cache_2,
         ):
             for i in range(1000):
-                await cache_1.write(i, i)  # type: ignore[arg-type]
-                await cache_2.write(i, i)  # type: ignore[arg-type]
+                await cache_1.write(i, i, None)  # type: ignore[arg-type]
+                await cache_2.write(i, i, None)  # type: ignore[arg-type]
 
             keys_1 = {k async for k in cache_1.keys()}
             keys_2 = {k async for k in cache_2.keys()}
