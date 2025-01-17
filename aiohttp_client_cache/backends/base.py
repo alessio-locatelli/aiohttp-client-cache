@@ -24,6 +24,11 @@ _FilterFn = Union[
 
 logger = getLogger(__name__)
 
+# Unlike the `expire_after` parameter, which can take an integer or timedelta,
+# we need to store a `datetime` object in the backend. Therefore, the 'expire_at'
+# naming convention is preferred for a database field.
+EXPIRE_AT = 'expire_at'
+
 
 class CacheBackend:
     """Base class for cache backends; includes a non-persistent, in-memory cache.
@@ -83,6 +88,11 @@ class CacheBackend:
 
         self.include_headers = include_headers
         self.ignored_params = set(ignored_params or [])
+
+    async def connect(self) -> None:
+        """An optional method for performing backend-specific setup, such as creating indexes."""
+        await self.responses.connect()
+        await self.redirects.connect()
 
     async def is_cacheable(
         self, response: AnyResponse | None, actions: CacheActions | None = None
@@ -300,6 +310,9 @@ class BaseCache(metaclass=ABCMeta):
         super().__init__()
         self._serializer = serializer or self._get_serializer(secret_key, salt)
         self._closed = False
+
+    async def connect(self) -> None:
+        """An optional method for performing backend-specific setup, such as creating indexes."""
 
     def serialize(self, item: ResponseOrKey = None) -> bytes | None:
         """Serialize a URL or response into bytes"""

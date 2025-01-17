@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
 
 from aiohttp_client_cache.backends import BaseCache, CacheBackend, ResponseOrKey, get_valid_kwargs
+from aiohttp_client_cache.backends.base import EXPIRE_AT
 
 
 class MongoDBBackend(CacheBackend):
@@ -62,8 +63,16 @@ class MongoDBCache(BaseCache):
         self.db = self.connection[db_name]
         self.collection = self.db[collection_name]
 
+    async def connect(self) -> None:
+        await self._create_index()
+        await super().connect()
+
+    async def _create_index(self) -> None:
+        await self.collection.create_index(EXPIRE_AT, expireAfterSeconds=0)
+
     async def clear(self):
         await self.collection.drop()
+        await self._create_index()
 
     async def contains(self, key: str) -> bool:
         return bool(await self.collection.find_one({'_id': key}, projection={'_id': True}))
@@ -97,8 +106,9 @@ class MongoDBCache(BaseCache):
             yield doc['data']
 
     async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
-        update = {'$set': {'data': item}}
-        await self.collection.update_one({'_id': key}, update, upsert=True)
+        await self.collection.update_one(
+            {'_id': key}, {'$set': {'data': item, EXPIRE_AT: expire_after}}, upsert=True
+        )
 
 
 class MongoDBPickleCache(MongoDBCache):
