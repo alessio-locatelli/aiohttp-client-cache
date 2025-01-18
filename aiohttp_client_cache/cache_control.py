@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from fnmatch import fnmatch
@@ -10,7 +11,6 @@ from functools import singledispatch
 from itertools import chain
 from logging import getLogger
 from typing import Any, NoReturn, Union
-from collections.abc import Mapping
 
 from aiohttp import ClientResponse
 from aiohttp.typedefs import StrOrURL
@@ -72,14 +72,10 @@ class CacheActions:
         """Initialize from request info and CacheBackend settings"""
         if cache_disabled:
             return cls(key=key, skip_read=True, skip_write=True)
-        else:
-            headers = headers or {}
-            if cache_control and has_cache_headers(headers):
-                return cls.from_headers(key, headers)
-            else:
-                return cls.from_settings(
-                    key, cache_control=cache_control, refresh=refresh, **kwargs
-                )
+        headers = headers or {}
+        if cache_control and has_cache_headers(headers):
+            return cls.from_headers(key, headers)
+        return cls.from_settings(key, cache_control=cache_control, refresh=refresh, **kwargs)
 
     @classmethod
     def from_headers(cls, key: str, headers: Mapping):
@@ -247,8 +243,7 @@ def split_kv_directive(header_value: str) -> CacheDirective:
     if '=' in header_value:
         k, v = header_value.split('=', 1)
         return k, try_int(v)
-    else:
-        return header_value, True
+    return header_value, True
 
 
 def convert_to_utc_naive(dt: datetime):

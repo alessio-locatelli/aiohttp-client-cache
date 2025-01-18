@@ -100,25 +100,23 @@ class CacheMixin(MIXIN_BASE):
                 )
                 if not from_cache:
                     return set_response_defaults(new_response)
-                else:
-                    restore_cookies(new_response)
-                    return cast(CachedResponse, new_response)
+                restore_cookies(new_response)
+                return cast(CachedResponse, new_response)
 
             # Restore any cached cookies to the session
             if response:
                 restore_cookies(response)
                 return response
             # If the response was missing or expired, send and cache a new request
+            if actions.skip_read:
+                logger.debug(f'Reading from cache was skipped; making request to {str_or_url}')
             else:
-                if actions.skip_read:
-                    logger.debug(f'Reading from cache was skipped; making request to {str_or_url}')
-                else:
-                    logger.debug(f'Cached response not found; making request to {str_or_url}')
-                new_response = await super()._request(method, str_or_url, **kwargs)
-                actions.update_from_response(new_response)
-                if await self.cache.is_cacheable(new_response, actions):
-                    await self.cache.save_response(new_response, actions.key, actions.expires)
-                return set_response_defaults(new_response)
+                logger.debug(f'Cached response not found; making request to {str_or_url}')
+            new_response = await super()._request(method, str_or_url, **kwargs)
+            actions.update_from_response(new_response)
+            if await self.cache.is_cacheable(new_response, actions):
+                await self.cache.save_response(new_response, actions.key, actions.expires)
+            return set_response_defaults(new_response)
 
     async def _refresh_cached_response(
         self,
@@ -144,22 +142,20 @@ class CacheMixin(MIXIN_BASE):
             if refreshed_response.status == 304:
                 logger.debug('Cached response not modified; returning cached response')
                 return True, cached_response
+            actions.update_from_response(refreshed_response)
+            if await self.cache.is_cacheable(refreshed_response, actions):
+                logger.debug('Cached response refreshed; updating cache')
+                await self.cache.save_response(refreshed_response, actions.key, actions.expires)
             else:
-                actions.update_from_response(refreshed_response)
-                if await self.cache.is_cacheable(refreshed_response, actions):
-                    logger.debug('Cached response refreshed; updating cache')
-                    await self.cache.save_response(refreshed_response, actions.key, actions.expires)
-                else:
-                    logger.debug('Cached response refreshed; deleting from cache')
-                    await self.cache.delete(actions.key)
+                logger.debug('Cached response refreshed; deleting from cache')
+                await self.cache.delete(actions.key)
 
-                return False, refreshed_response
-        else:
-            logger.debug(
-                'Conditional requests not supported, no ETag or Last-Modified headers present; '
-                'returning cached response'
-            )
-            return True, cached_response
+            return False, refreshed_response
+        logger.debug(
+            'Conditional requests not supported, no ETag or Last-Modified headers present; '
+            'returning cached response'
+        )
+        return True, cached_response
 
     async def close(self):
         """Close both aiohttp connector and any backend connection(s) on contextmanager exit"""

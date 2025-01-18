@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Union
-from collections.abc import Iterable, Sequence
 
 from aiohttp.typedefs import StrOrURL
 from multidict import MultiDict
@@ -74,7 +73,7 @@ def encode_dict(data: Any) -> bytes:
         return b''
     if isinstance(data, bytes):
         return data
-    elif not isinstance(data, Mapping):
+    if not isinstance(data, Mapping):
         return str(data).encode()
     item_pairs = [f'{k}={v}' for k, v in sorted((data or {}).items())]
     return '&'.join(item_pairs).encode()

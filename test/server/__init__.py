@@ -14,5 +14,4 @@ def cache(interval):
     request_etag = request.headers.get('If-None-Match')
     if request_etag == server_etag:
         return 'NOT MODIFIED', 304
-    else:
-        return 'OK', 200, {'ETag': server_etag}
+    return 'OK', 200, {'ETag': server_etag}

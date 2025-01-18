@@ -4,10 +4,10 @@ import inspect
 import pickle
 from abc import ABCMeta, abstractmethod
 from collections import UserDict
+from collections.abc import AsyncIterable, Awaitable, Iterable
 from datetime import datetime
 from logging import getLogger
 from typing import Any, Callable, Union
-from collections.abc import AsyncIterable, Awaitable, Iterable
 
 from aiohttp import ClientResponse
 from aiohttp.typedefs import StrOrURL
@@ -234,7 +234,7 @@ class CacheBackend:
 
         async for key in self.responses.keys():
             response = await self.responses.read(key)
-            if response and response.is_expired or not self.filter_fn(response):  # type: ignore[union-attr,arg-type]
+            if (response and response.is_expired) or not self.filter_fn(response):  # type: ignore[union-attr,arg-type]
                 keys_to_delete.add(key)
 
         logger.debug(f'Deleting {len(keys_to_delete)} expired cache entries')
@@ -322,8 +322,7 @@ class BaseCache(metaclass=ABCMeta):
             from itsdangerous.serializer import Serializer
 
             return Serializer(secret_key, salt=salt, serializer=pickle)
-        else:
-            return pickle
+        return pickle
 
     @abstractmethod
     async def contains(self, key: str) -> bool:
