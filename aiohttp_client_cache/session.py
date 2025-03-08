@@ -246,4 +246,5 @@ with warnings.catch_warnings():
         """
 
         async def __aenter__(self) -> CachedSession:
+            await self.cache.connect()
             return self

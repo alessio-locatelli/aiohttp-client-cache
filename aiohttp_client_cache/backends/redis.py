@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timezone
 from typing import Any
 from collections.abc import AsyncIterable
 
@@ -107,10 +108,25 @@ class RedisCache(BaseCache):
         for v in await connection.hvals(self.hash_key):
             yield self.deserialize(v)
 
-    async def write(self, key: str, item: ResponseOrKey):
+    async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
         connection = await self.get_connection()
-        await connection.hset(
+        inserted_key_count = await connection.hset(
             self.hash_key,
             key,
             self.serialize(item),
         )
+        if expire_after is not None:
+            await connection.hexpireat(
+                self.hash_key,
+                # NOTE: The `redis` package calls `datetime.timestamp()` in
+                # https://github.com/redis/redis-py/blob/7a6b412fa86f019b590da8625efd04114f119965/redis/commands/core.py#L5102
+                # Thus, you must not pass a naive `datetime` because naive `datetime`
+                # instances are assumed to represent local time. We follow the
+                # official Python instructions to obtain the POSIX timestamp directly
+                # from a naive `datetime` instance representing UTC time:
+                # https://docs.python.org/3/library/datetime.html#datetime.datetime.timestamp
+                int(expire_after.replace(tzinfo=timezone.utc).timestamp()),
+                key,
+            )
+        elif inserted_key_count == 0:
+            await connection.hpersist(self.hash_key, key)

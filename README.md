@@ -97,3 +97,12 @@ To learn more, see:
 
 If there is a feature you want, if you've discovered a bug, or if you have other general feedback, please
 [create an issue](https://github.com/requests-cache/aiohttp-client-cache/issues/new/choose) for it!
+
+# Announcements
+
+v0.14 beta comes with two major improvements:
+
+- In previous versions, a built-in backend TTL was not used, potentially leading to infinite storage usage until a user manually cleared it.
+- From v0.14, a response expiration date is stored with the response, allowing expired items to be filtered and deleted without downloading them from the backend.
+
+You are encouraged to allow pre-releases in your package manager and provide feedback.

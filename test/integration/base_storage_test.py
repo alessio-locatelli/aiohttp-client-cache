@@ -40,7 +40,7 @@ class BaseStorageTest:
         async with self.init_cache() as cache:  # type: ignore[var-annotated]
             # Test write(), contains(), and size()
             for k, v in self.test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
                 assert await cache.contains(k) is True
             assert await cache.size() == len(self.test_data)
 
@@ -55,9 +55,9 @@ class BaseStorageTest:
 
     async def test_delete(self):
         async with self.init_cache() as cache:  # type: ignore[var-annotated]
-            await cache.write('do_not_delete', 'value')
+            await cache.write('do_not_delete', 'value', None)
             for k, v in self.test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
 
             for k in self.test_data.keys():
                 await cache.delete(k)
@@ -67,9 +67,9 @@ class BaseStorageTest:
 
     async def test_bulk_delete(self):
         async with self.init_cache() as cache:  # type: ignore[var-annotated]
-            await cache.write('do_not_delete', 'value')
+            await cache.write('do_not_delete', 'value', None)
             for k, v in self.test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
 
             await cache.bulk_delete(self.test_data.keys())
 
@@ -89,7 +89,7 @@ class BaseStorageTest:
             assert [v async for v in cache.values()] == []
 
             for k, v in test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
 
             assert sorted([k async for k in cache.keys()]) == sorted(test_data.keys())
             assert sorted([v async for v in cache.values()]) == sorted(test_data.values())
@@ -98,14 +98,14 @@ class BaseStorageTest:
         async with self.init_cache() as cache:  # type: ignore[var-annotated]
             assert await cache.size() == 0
             for k, v in self.test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
 
             assert await cache.size() == len(self.test_data)
 
     async def test_clear(self):
         async with self.init_cache() as cache:  # type: ignore[var-annotated]
             for k, v in self.test_data.items():
-                await cache.write(k, v)
+                await cache.write(k, v, None)
 
             await cache.clear()
             assert await cache.size() == 0

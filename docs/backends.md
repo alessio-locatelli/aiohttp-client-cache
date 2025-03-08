@@ -99,7 +99,7 @@ If the built-in backends don't suit your needs, you can create your own by makin
 ...     def values(self) -> AsyncIterable[ResponseOrKey]:
 ...         """Get all values stored in the cache"""
 ...
-...     async def write(self, key: str, item: ResponseOrKey):
+...     async def write(self, key: str, item: ResponseOrKey, expire_after: datetime | None):
 ...         """Write an item to the cache"""
 ```
 
