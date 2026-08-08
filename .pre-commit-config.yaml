@@ -27,3 +27,9 @@ repos:
     rev: v1.49.0
     hooks:
       - id: typos
+  - repo: https://github.com/alessio-locatelli/ruff-extra-rules
+    rev: v0.2.2
+    hooks:
+      - id: ruff-extra-rules
+      - id: ruff-extra-rules-ty
+        additional_dependencies: [ty]
