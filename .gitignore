@@ -17,6 +17,7 @@ venv/
 .mypy_cache/
 .tox
 test-reports/
+.cache
 
 # Sphinx
 docs/_build/
